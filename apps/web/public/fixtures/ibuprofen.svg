@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#fff8f4" stroke="#8c3a2f" stroke-width="8"/>
+  <text x="48" y="80" font-family="Arial" font-size="28" fill="#5c584f">SYNTHETIC DRAWING, NOT A PRODUCT PHOTO</text>
+  <text x="48" y="180" font-family="Arial" font-size="54" fill="#131209">Ibuprofen</text>
+  <text x="48" y="260" font-family="Arial" font-size="40" fill="#131209">200 mg tablets</text>
+  <text x="48" y="340" font-family="Arial" font-size="32" fill="#131209">Each tablet contains ibuprofen 200 mg</text>
+  <text x="48" y="410" font-family="Arial" font-size="32" fill="#131209">Oral tablet. Immediate release.</text>
+  <text x="48" y="490" font-family="Arial" font-size="32" fill="#131209">Exp 2027-01-01</text>
+</svg>

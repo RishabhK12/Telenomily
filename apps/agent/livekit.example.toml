@@ -1,0 +1,4 @@
+[agent]
+name = "telenomily"
+# Fill these with `lk agent create` output. Do not commit a real project subdomain if it is private.
+# id = ""

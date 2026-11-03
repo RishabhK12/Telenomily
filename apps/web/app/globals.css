@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f6f3ec;
+  --color-ink: #131209;
+  --color-card: #ffffff;
+  --color-forest: #1f4d3a;
+  --color-clay: #8c3a2f;
+  --color-amber: #6b4e16;
+  --color-line: #d9d3c7;
+  --color-muted: #5c584f;
+}
+
+@layer base {
+  html {
+    background: #f6f3ec;
+    color: #131209;
+  }
+  body {
+    font-family: var(--font-manrope), ui-sans-serif, sans-serif;
+  }
+  h1, h2, h3, p, button, a, label, li {
+    text-wrap: pretty;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 2px solid #131209;
+    outline-offset: 3px;
+  }
+}
+
+@utility heading-1 { @apply text-6xl font-semibold; }
+@utility heading-2 { @apply text-5xl font-semibold; }
+@utility heading-3 { @apply text-4xl font-semibold; }
+@utility heading-4 { @apply text-3xl font-semibold; }
+@utility heading-5 { @apply text-2xl font-semibold; }
+@utility heading-6 { @apply text-xl font-semibold; }
+@utility title-1 { @apply text-xl font-medium; }
+@utility title-2 { @apply text-lg font-medium; }
+@utility title-3 { @apply text-base font-medium; }
+@utility title-4 { @apply text-sm font-medium; }
+@utility body-3 { @apply text-base font-normal; }
+@utility body-4 { @apply text-sm font-semibold; }
+@utility body-6 { @apply text-sm font-normal; }
+@utility button-md { @apply text-base font-semibold; }
+@utility button-lg { @apply text-lg font-semibold; }
+@utility button-xl { @apply text-2xl font-semibold; }
+@utility caption-2 { @apply text-sm font-normal text-muted; }
+@utility caption-4 { @apply text-xs font-medium; }
+
+.hero-title {
+  max-width: 680px;
+  background-image: linear-gradient(90deg, #000000, #666666);
+  background-clip: text;
+  color: transparent;
+}
+
+.ease-soft {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe {
+    transform: none !important;
+    transition: none !important;
+  }
+}

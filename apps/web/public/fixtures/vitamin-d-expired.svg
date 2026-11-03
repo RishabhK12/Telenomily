@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+  <rect width="900" height="600" fill="#fffdf6" stroke="#6b4e16" stroke-width="8"/>
+  <text x="48" y="80" font-family="Arial" font-size="28" fill="#5c584f">SYNTHETIC DRAWING, NOT A PRODUCT PHOTO</text>
+  <text x="48" y="180" font-family="Arial" font-size="48" fill="#131209">Cholecalciferol</text>
+  <text x="48" y="260" font-family="Arial" font-size="40" fill="#131209">1000 IU capsules</text>
+  <text x="48" y="340" font-family="Arial" font-size="32" fill="#131209">Each capsule contains cholecalciferol 1000 IU</text>
+  <text x="48" y="410" font-family="Arial" font-size="32" fill="#131209">Oral capsule. Immediate release.</text>
+  <text x="48" y="490" font-family="Arial" font-size="32" fill="#131209">Exp 2020-01-01</text>
+</svg>

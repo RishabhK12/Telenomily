@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="640" viewBox="0 0 900 640">
+  <rect width="900" height="640" fill="#f3f7fb" stroke="#1f4d3a" stroke-width="8"/>
+  <text x="48" y="70" font-family="Arial" font-size="24" fill="#5c584f">SYNTHETIC DRAWING, NOT A PRODUCT PHOTO</text>
+  <text x="48" y="170" font-family="Arial" font-size="52" fill="#131209">Paracetamol Sol</text>
+  <text x="48" y="250" font-family="Arial" font-size="36" fill="#131209">500 mg comprimidos</text>
+  <text x="48" y="330" font-family="Arial" font-size="30" fill="#131209">Cada comprimido contiene paracetamol 500 mg</text>
+  <text x="48" y="400" font-family="Arial" font-size="30" fill="#131209">Via oral. Liberacion inmediata.</text>
+  <text x="48" y="500" font-family="Arial" font-size="24" fill="#5c584f">Fictional Spanish label. Mapping is documented in the seed catalog.</text>
+</svg>

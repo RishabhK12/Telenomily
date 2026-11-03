@@ -1,0 +1,16 @@
+node_modules
+.next
+dist
+.turbo
+.env
+.env.local
+.env.*.local
+apps/web/.env.local
+apps/agent/.env.local
+.rehearsal
+apps/web/.rehearsal
+coverage
+*.log
+.DS_Store
+tsconfig.tsbuildinfo
+livekit.toml

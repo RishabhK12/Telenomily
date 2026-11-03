@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600">
+  <rect width="1200" height="1600" fill="#fffdf8"/>
+  <text x="80" y="120" font-family="Georgia" font-size="42" fill="#131209">SYNTHETIC DISCHARGE SHEET</text>
+  <text x="80" y="170" font-family="Georgia" font-size="28" fill="#5c584f">Fictional patient Elena Vasquez. Not a real record.</text>
+  <text x="80" y="280" font-family="Georgia" font-size="32" fill="#131209">Continue lisinopril 10 mg tablet. Take 1 tablet by mouth every morning at 8:00.</text>
+  <text x="80" y="400" font-family="Georgia" font-size="32" fill="#131209">Acetaminophen 500 mg tablet. Take 1 tablet by mouth every 8 hours as needed for pain.</text>
+  <text x="80" y="520" font-family="Georgia" font-size="32" fill="#131209">Continue cholecalciferol 1000 IU capsule. Take 1 capsule by mouth once daily at 8:00.</text>
+  <text x="80" y="640" font-family="Georgia" font-size="32" fill="#131209">Start cephalexin 500 mg capsule. Take 1 capsule by mouth at 8:00, 14:00, 20:00, and 2:00 for 7 days.</text>
+  <text x="80" y="760" font-family="Georgia" font-size="32" fill="#131209">Stop aspirin 81 mg delayed release tablet.</text>
+</svg>

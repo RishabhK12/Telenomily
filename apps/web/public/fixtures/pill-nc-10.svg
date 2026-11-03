@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="500" viewBox="0 0 900 500">
+  <rect width="900" height="500" fill="#f7f7f5"/>
+  <text x="40" y="70" font-family="Arial" font-size="24" fill="#5c584f">SYNTHETIC DRAWING, NOT A PRODUCT PHOTO</text>
+  <circle cx="250" cy="280" r="120" fill="#ffffff" stroke="#131209" stroke-width="6"/>
+  <text x="190" y="290" font-family="Arial" font-size="42" fill="#131209">NC 10</text>
+  <circle cx="620" cy="280" r="120" fill="#ffffff" stroke="#131209" stroke-width="6"/>
+  <text x="590" y="270" font-family="Arial" font-size="42" fill="#131209">10</text>
+  <line x1="540" y1="280" x2="700" y2="280" stroke="#131209" stroke-width="4"/>
+  <text x="40" y="460" font-family="Arial" font-size="28" fill="#131209">Round white tablet, scored on the second side</text>
+</svg>

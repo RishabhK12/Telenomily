@@ -1,0 +1,20 @@
+{
+  "name": "telenomily",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @nomi/web",
+    "build": "npm run build -w @nomi/web",
+    "lint": "npm run lint -w @nomi/web",
+    "typecheck": "npm run typecheck -w @nomi/domain && npm run typecheck -w @nomi/web && npm run typecheck -w @nomi/agent",
+    "test": "npm run test -w @nomi/domain",
+    "agent:dev": "npm run dev -w @nomi/agent",
+    "seed": "tsx scripts/seed-demo.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
