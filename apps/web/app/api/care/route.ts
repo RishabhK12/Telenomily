@@ -13,6 +13,7 @@ import {
   presenterFeed,
   presenterLogin,
   redeemInvite,
+  reportDose,
   resetDemo,
   saveDraft,
   signInLive,
@@ -74,6 +75,13 @@ export async function POST(request: Request) {
     }
     if (action === "save-draft") return Response.json(await saveDraft(String(body.planId), (body.medications as { id: string; name?: string; instructionKind?: "start" | "continue" | "stop" | "as_needed"; timings?: string[] }[]) ?? []));
     if (action === "confirm") return Response.json(await confirmDraft(String(body.planId)));
+    if (action === "report-dose") {
+      const state = String(body.state ?? "");
+      if (state !== "reported_taken" && state !== "reported_not_taken" && state !== "unsure") {
+        return Response.json({ error: "That dose report is not one you can save." }, { status: 400 });
+      }
+      return Response.json(await reportDose(String(body.occurrenceId ?? ""), state));
+    }
     if (action === "start-room") return Response.json(await startMedicineRoom());
     if (action === "join-room") return Response.json(await joinMedicineRoom());
     if (action === "end-room") return Response.json(await endMedicineRoom());

@@ -140,7 +140,9 @@ export async function loadDashboard(patientId?: string) {
     return when >= todayStart && when < tomorrow;
   });
   const completed = todaysDoses.filter((dose) => dose.state !== "pending" && dose.state !== "no_response").length;
-  const activeRoom = rooms.find((room) => !room.endedAt && room.purpose === "medicine_check") ?? null;
+  const demoCall = await database().demoCall();
+  const activeRoom = rooms.find((room) => !room.endedAt && room.purpose === "medicine_check")
+    ?? (demoCall ? { id: "demo-call", patientId: patient.id, livekitRoom: "telenomily-demo", purpose: "medicine_check", patientIdentity: "patient", callId: null, createdAt: demoCall.startedAt, endedAt: null } : null);
   return {
     mode: runtimeMode(),
     productName: productName(),
@@ -212,6 +214,30 @@ function presentMed(medication: MedRow) {
     specialInstructions: medication.specialInstructions,
     ingredients: medication.ingredients,
   };
+}
+
+export async function reportDose(occurrenceId: string, state: DoseReportState) {
+  const actor = await currentActor();
+  if (actor.role !== "patient") throw new AppError(403, "patient_only", "The patient reports a dose.");
+  const patient = await accessiblePatient(actor);
+  const dose = (await database().doses(patient.id)).find((item) => item.id === occurrenceId);
+  if (!dose || dose.patientId !== patient.id) throw new AppError(404, "dose_missing", "That dose is not on your plan.");
+  if (!["reported_taken", "reported_not_taken", "unsure"].includes(state)) {
+    throw new AppError(400, "bad_state", "That dose report is not one you can save.");
+  }
+  await database().saveDoseState(occurrenceId, state);
+  const medication = (await database().medications(patient.id)).find((item) => item.id === dose.medicationId);
+  const spokenScript = doseReportSpeech(state, medication?.name ?? "the medicine");
+  await database().insertActivity({
+    id: crypto.randomUUID(),
+    patientId: patient.id,
+    title: "Dose reported",
+    detail: spokenScript,
+    source: SOURCE.report,
+    status: state,
+    createdAt: new Date().toISOString(),
+  });
+  return { spokenScript };
 }
 
 export async function signInRehearsal(role: "patient" | "family") {

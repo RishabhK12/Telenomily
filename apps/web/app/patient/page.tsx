@@ -8,11 +8,7 @@ export default async function PatientPage() {
   try {
     const data = (await loadDashboard()) as BoardData;
     if (data.viewer.role === "family") redirect("/family");
-    return (
-      <main id="content">
-        <Board initial={data} audience="patient" />
-      </main>
-    );
+    return <Board initial={data} audience="patient" />;
   } catch {
     redirect("/login");
   }

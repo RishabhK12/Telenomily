@@ -67,38 +67,38 @@ export function PlanEditor({ planId }: { planId: string }) {
   }
 
   return (
-    <main id="content" className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-      <a href="/patient" className="caption-2">Back</a>
-      <h1 className="heading-4">Confirm the plan</h1>
-      <p className="body-6">The source text stays next to each row. As needed medicines will not become daily doses. Stopped medicines stay off the schedule.</p>
-      {message ? <p className="body-6">{message}</p> : null}
+    <main id="content" className="family-screen mx-auto flex max-w-[720px] flex-col gap-4 px-5 py-6">
+      <a href="/patient" className="type-label text-indigo">Back</a>
+      <h1 className="type-title">Confirm the plan</h1>
+      <p className="type-family">The source text stays next to each row. As needed medicines stay off the daily list. Stopped medicines stay off the schedule.</p>
+      {message ? <p className="type-family">{message}</p> : null}
       {meds.map((medication) => (
-        <article key={medication.id} className="grid gap-4 rounded-2xl border border-line bg-card p-4 md:grid-cols-2">
+        <article key={medication.id} className="card grid gap-4 md:grid-cols-2">
           <div>
-            <p className="caption-4">Source text</p>
-            <p className="body-6 mt-2">{medication.sourceText || "No source text was captured."}</p>
-            {medication.missingFields.length > 0 ? <p className="caption-2 mt-2">Missing: {medication.missingFields.join(", ")}</p> : null}
+            <p className="type-small text-muted">Source text</p>
+            <p className="type-family mt-2">{medication.sourceText || "No source text was captured."}</p>
+            {medication.missingFields.length > 0 ? <p className="type-small mt-2 text-expired">Please check this: {medication.missingFields.join(", ")}</p> : null}
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="title-3">Name
-              <input className="mt-1 block min-h-12 w-full rounded-xl border border-line px-3" value={medication.name} onChange={(event) => update(medication.id, { name: event.target.value })} />
+          <div className="flex flex-col gap-3">
+            <label className="type-label">Name
+              <input className="mt-1 block min-h-14 w-full rounded-full border border-lavender px-4" value={medication.name} onChange={(event) => update(medication.id, { name: event.target.value })} />
             </label>
-            <label className="title-3">Kind
-              <select className="mt-1 block min-h-12 w-full rounded-xl border border-line px-3" value={medication.instructionKind} onChange={(event) => update(medication.id, { instructionKind: event.target.value })}>
+            <label className="type-label">Kind
+              <select className="mt-1 block min-h-14 w-full rounded-full border border-lavender px-4" value={medication.instructionKind} onChange={(event) => update(medication.id, { instructionKind: event.target.value })}>
                 <option value="start">Start</option>
                 <option value="continue">Continue</option>
                 <option value="stop">Stop</option>
                 <option value="as_needed">As needed</option>
               </select>
             </label>
-            <label className="title-3">Clock times
-              <input className="mt-1 block min-h-12 w-full rounded-xl border border-line px-3" value={medication.timings.join(", ")} onChange={(event) => update(medication.id, { timings: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} />
+            <label className="type-label">Clock times
+              <input className="mt-1 block min-h-14 w-full rounded-full border border-lavender px-4" value={medication.timings.join(", ")} onChange={(event) => update(medication.id, { timings: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} />
             </label>
-            <p className="caption-2">{medication.strengthLabel}. {medication.instructions}</p>
+            <p className="type-small text-muted">{medication.strengthLabel}. {medication.instructions}</p>
           </div>
         </article>
       ))}
-      <button type="button" className="button-xl min-h-16 rounded-2xl bg-forest px-6 py-4 text-paper" onClick={() => void confirm()}>Confirm schedule</button>
+      <button type="button" className="btn-main" onClick={() => void confirm()}>Save plan</button>
     </main>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { CheckCircle, ClockCountdown, MagnifyingGlass, Pill, Prohibit, Question, Translate } from "@phosphor-icons/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Basket, Bell, Calendar, CalendarX, CheckCircle, Heartbeat, House, Package, Pill, Prohibit, Question, SignOut, Translate, Users } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PatientNav } from "./patient-nav";
 
 type Dose = { id: string; medicationName: string; scheduledFor: string; state: string; instructions: string };
 type Check = { id: string; outcome: string; spokenScript: string; createdAt: string; source: string };
@@ -47,13 +48,25 @@ export function outcomeText(outcome: string) {
   return outcomeLabel[outcome] ?? outcome;
 }
 
-export function Board({ initial, audience }: { initial: BoardData; audience: "patient" | "family" }) {
+const chipStyle: Record<string, string> = {
+  on_plan: "bg-on-plan-bg text-on-plan",
+  possible_match: "bg-on-plan-bg text-on-plan",
+  not_on_plan: "bg-off-plan-bg text-off-plan",
+  expired: "bg-expired-bg text-expired",
+  candidate: "bg-expired-bg text-expired",
+  missing: "bg-missing-bg text-missing",
+  cant_confirm: "bg-unsure-bg text-unsure",
+};
+
+export function Board({ initial, audience, pollPath = "/api/care" }: { initial: BoardData; audience: "patient" | "family"; pollPath?: string }) {
   const [data, setData] = useState(initial);
   const [error, setError] = useState("");
+  const [menu, setMenu] = useState(false);
+  const [note, setNote] = useState("");
   const router = useRouter();
   useEffect(() => {
     const tick = async () => {
-      const response = await fetch("/api/care");
+      const response = await fetch(pollPath);
       if (response.ok) setData((await response.json()) as BoardData);
     };
     const timer = window.setInterval(() => void tick(), 3000);
@@ -63,7 +76,7 @@ export function Board({ initial, audience }: { initial: BoardData; audience: "pa
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [pollPath]);
 
   async function signOut() {
     await fetch("/api/care", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "sign-out" }) });
@@ -72,6 +85,10 @@ export function Board({ initial, audience }: { initial: BoardData; audience: "pa
   }
 
   async function join() {
+    if (data.activeRoom?.livekitRoom === "telenomily-demo") {
+      router.push("/family/call");
+      return;
+    }
     const response = await fetch("/api/care", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "join-room" }) });
     const payload = (await response.json()) as { error?: string; token?: string; url?: string; roomName?: string };
     if (!response.ok || !payload.token) {
@@ -82,153 +99,238 @@ export function Board({ initial, audience }: { initial: BoardData; audience: "pa
     router.push("/family/call");
   }
 
+  if (audience === "patient") {
+    return <PatientToday data={data} error={error} note={note} menu={menu} setMenu={setMenu} setNote={setNote} setError={setError} signOut={signOut} />;
+  }
+  return <FamilyHome data={data} error={error} onJoin={() => void join()} onSignOut={() => void signOut()} />;
+}
+
+function PatientToday({
+  data, error, note, menu, setMenu, setNote, setError, signOut,
+}: {
+  data: BoardData;
+  error: string;
+  note: string;
+  menu: boolean;
+  setMenu: (value: boolean) => void;
+  setNote: (value: string) => void;
+  setError: (value: string) => void;
+  signOut: () => Promise<void>;
+}) {
+  const pending = useMemo(() => data.doses.filter((dose) => dose.state === "pending"), [data.doses]);
+  const [index, setIndex] = useState(0);
+  const current = pending[index] ?? null;
+  const dateLabel = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" }).format(new Date()).toUpperCase();
+
+  async function report(state: "reported_taken" | "reported_not_taken") {
+    if (!current) return;
+    setError("");
+    const response = await fetch("/api/care", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "report-dose", occurrenceId: current.id, state }),
+    });
+    const payload = (await response.json()) as { spokenScript?: string; error?: string };
+    if (!response.ok) {
+      setError(payload.error ?? "That dose could not be saved.");
+      return;
+    }
+    setNote(payload.spokenScript ?? "Saved.");
+    setIndex(0);
+  }
+
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
-      {error ? <p className="body-6 text-clay" role="alert">{error}</p> : null}
-      {data.mode === "rehearsal" ? (
-        <p className="rounded-2xl border border-amber bg-card px-4 py-3 body-6">Rehearsal mode. Phone calls and live video are not being simulated as success.</p>
-      ) : null}
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="caption-2">{data.productName}</p>
-          <h1 className={audience === "patient" ? "heading-4" : "heading-5"}>{audience === "patient" ? `Hello, ${data.patient.preferredName}` : data.patient.preferredName}</h1>
-          <p className="caption-2">{audience === "family" ? "Family view. You only see people linked to this account." : "Your schedule for today."}</p>
+    <div className="patient-screen">
+      <main id="content" className="mx-auto flex min-h-dvh max-w-[480px] flex-col px-5 pb-36 pt-[max(16px,env(safe-area-inset-top))]">
+        <header className="flex items-center justify-between">
+          <button type="button" className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-lifted" aria-expanded={menu} aria-label="Menu" onClick={() => setMenu(!menu)}>
+            <SignOut size={28} color="#FFFFFF" aria-hidden />
+          </button>
+          <p className="type-label text-white">{data.productName}</p>
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-lifted" aria-label="Family can follow along">
+            <Users size={28} color="#FFFFFF" aria-hidden />
+          </span>
+        </header>
+        {menu ? (
+          <button type="button" className="btn-secondary mt-4" onClick={() => void signOut()}>Sign out</button>
+        ) : null}
+        <h1 className="type-title mt-6 text-center text-white">Today&apos;s medicine</h1>
+        <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-indigo-pressed px-4 py-2 type-label text-white">
+          <Calendar size={22} weight="fill" color="#F9DF77" aria-hidden />
+          {dateLabel}
+        </p>
+        {error ? <p className="mt-4 text-center type-body text-yellow" role="alert">{error}</p> : null}
+        {note ? <p className="mt-4 text-center type-body text-white" role="status">{note}</p> : null}
+        <div className="mt-8 flex items-center gap-3">
+          <button type="button" className="btn-secondary h-14 w-14 shrink-0" aria-label="Previous dose" onClick={() => setIndex((value) => Math.max(0, value - 1))}>←</button>
+          <article className="card-main flex-1 text-center">
+            {current ? (
+              <>
+                <p className="type-time">{new Date(current.scheduledFor).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
+                <div className="mx-auto mt-4 flex h-40 w-40 items-center justify-center rounded-full bg-lavender">
+                  <Pill size={72} weight="fill" color="#4D50A2" aria-hidden />
+                </div>
+                <h2 className="type-medicine mt-4">{current.medicationName}</h2>
+                <p className="type-body mt-2">{current.instructions}</p>
+              </>
+            ) : (
+              <>
+                <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-full bg-on-plan-bg">
+                  <CheckCircle size={72} weight="fill" color="#176B52" aria-hidden />
+                </div>
+                <h2 className="type-medicine mt-4">All done for today</h2>
+                <p className="type-body mt-2">{data.checkIn.completed} of {data.checkIn.scheduled} doses reported.</p>
+                <p className="type-label mt-2 text-muted">{data.checkIn.explanation}</p>
+              </>
+            )}
+          </article>
+          <button type="button" className="btn-secondary h-14 w-14 shrink-0" aria-label="Next dose" onClick={() => setIndex((value) => Math.min(Math.max(pending.length - 1, 0), value + 1))}>→</button>
         </div>
-        <button type="button" className="button-md rounded-xl border border-line px-3 py-2" onClick={() => void signOut()}>Sign out</button>
-      </header>
-      <section className="rounded-2xl border border-line bg-card p-4">
-        <h2 className="title-2">Completed check ins</h2>
-        <p className="heading-5 mt-2">{data.checkIn.completed} of {data.checkIn.scheduled}</p>
-        <p className="caption-2 mt-2">{data.checkIn.explanation}</p>
-      </section>
-      {audience === "patient" ? (
-        <a href="/patient/check" className="button-xl flex min-h-16 items-center justify-center rounded-2xl bg-forest px-6 py-4 text-center text-paper">Start medicine check</a>
-      ) : null}
-      {data.activeRoom ? (
-        <section className="rounded-2xl border border-forest bg-card p-4">
-          <h2 className="title-2">Active call</h2>
-          <p className="caption-2">Started {new Date(data.activeRoom.createdAt).toLocaleTimeString()}</p>
-          {audience === "family" ? <button type="button" className="button-lg mt-3 min-h-12 rounded-2xl bg-ink px-4 py-3 text-paper" onClick={() => void join()}>Join</button> : <a className="button-lg mt-3 inline-flex" href="/patient/check">Return to the call</a>}
-        </section>
-      ) : null}
-      <section>
-        <h2 className={audience === "patient" ? "heading-5" : "title-1"}>Today</h2>
-        {data.doses.length === 0 ? <p className="body-6 mt-3">No clock doses are scheduled today.</p> : (
-          <ul className="mt-3 flex flex-col gap-3">
-            {data.doses.map((dose) => (
-              <li key={dose.id} className="rounded-2xl border border-line bg-card p-4">
-                <p className={audience === "patient" ? "heading-6" : "title-2"}>{dose.medicationName}</p>
-                <p className="body-6">{new Date(dose.scheduledFor).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · {dose.state.replaceAll("_", " ")}</p>
-                <p className="body-6 mt-2">{dose.instructions}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      {data.asNeeded.length > 0 ? (
-        <section>
-          <h2 className="title-1">As needed</h2>
-          <ul className="mt-3 flex flex-col gap-3">
-            {data.asNeeded.map((item) => (
-              <li key={item.id} className="rounded-2xl border border-line bg-card p-4">
-                <p className="title-2">{item.name}</p>
-                <p className="body-6">{item.instructions}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {audience === "patient" ? <a className="button-lg inline-flex min-h-12 items-center justify-center rounded-2xl border border-ink px-4 py-3" href="/patient/scan">Scan a discharge sheet</a> : null}
-      <Section title="Medicine checks" empty="No checks yet.">
-        {data.checks.map((check) => (
-          <article key={check.id} className={`flex gap-3 rounded-2xl border bg-card p-4 ${outcomeBorder(check.outcome)}`}>
-            <OutcomeMark outcome={check.outcome} />
-            <div>
-              <p className="title-3">{outcomeText(check.outcome)}</p>
-              <p className="caption-2">{new Date(check.createdAt).toLocaleString()} · {check.source.replaceAll("_", " ")}</p>
-              <p className="body-6 mt-2">{check.spokenScript}</p>
+        {data.asNeeded[0] ? <p className="mt-6 text-center type-label text-white">As needed: {data.asNeeded[0].name}. Not a daily dose.</p> : null}
+        {current ? (
+          <div className="mt-6 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" className="btn-secondary" onClick={() => void report("reported_not_taken")}>Skip</button>
+              <button type="button" className="btn-secondary" onClick={() => setIndex((value) => Math.min(pending.length - 1, value + 1))}>Later</button>
             </div>
-          </article>
-        ))}
-      </Section>
-      <section>
-        <h2 className="title-1">Shared ingredients</h2>
-        {data.duplicates.length === 0 ? (
-          <p className="body-6 mt-3">No exact duplicate active ingredient was found across the confirmed products. This is not a full interaction check.</p>
-        ) : (
-          <ul className="mt-3 flex flex-col gap-3">
-            {data.duplicates.map((item) => (
-              <li key={item.ingredient} className="rounded-2xl border border-amber bg-card p-4">
-                <p className="title-3">{item.ingredient}</p>
-                <p className="body-6 mt-2">Also listed in {item.products.join(", ")}. This flag is not a full interaction check.</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <Section title="Symptoms" empty="No symptoms reported.">
-        {data.symptoms.map((item) => (
-          <article key={item.id} className="rounded-2xl border border-line bg-card p-4">
-            <p className="title-3">{item.urgent ? "Urgent report" : "Symptom"}</p>
-            <p className="caption-2">{new Date(item.createdAt).toLocaleString()} · patient report</p>
-            <p className="body-6 mt-2">{item.text}</p>
-          </article>
-        ))}
-      </Section>
-      <Section title="To obtain or replace" empty="No open tasks.">
-        {data.tasks.map((task) => (
-          <article key={task.id} className="rounded-2xl border border-line bg-card p-4">
-            <p className="title-3">{task.title}</p>
-            <p className="caption-2">{task.kind.replaceAll("_", " ")} · {new Date(task.createdAt).toLocaleString()}</p>
-          </article>
-        ))}
-      </Section>
-      <Section title="Pharmacy" empty="No pharmacy call yet.">
-        {data.pharmacy.map((item) => (
-          <article key={item.id} className="rounded-2xl border border-line bg-card p-4">
-            <p className="title-3">{item.decision.replaceAll("_", " ")}</p>
-            <p className="caption-2">{new Date(item.createdAt).toLocaleString()} · pharmacist statement{item.priceText ? ` · ${item.priceText}` : ""}</p>
-            <p className="body-6 mt-2">{item.statement}</p>
-          </article>
-        ))}
-      </Section>
-      <Section title="Activity" empty="Nothing has been recorded yet.">
-        {data.activity.slice(0, 20).map((item) => (
-          <article key={item.id} className="rounded-2xl border border-line bg-card p-4">
-            <p className="title-3">{item.title}</p>
-            <p className="caption-2">{new Date(item.createdAt).toLocaleString()} · {item.source.replaceAll("_", " ")} · {item.status.replaceAll("_", " ")}</p>
-            <p className="body-6 mt-2">{item.detail}</p>
-          </article>
-        ))}
-      </Section>
+            <button type="button" className="btn-main" onClick={() => void report("reported_taken")}>Take now</button>
+          </div>
+        ) : null}
+      </main>
+      <PatientNav active="today" />
     </div>
   );
 }
 
-function outcomeBorder(outcome: string) {
-  if (outcome === "on_plan" || outcome === "possible_match") return "border-forest";
-  if (outcome === "not_on_plan") return "border-clay";
-  if (outcome === "expired" || outcome === "candidate") return "border-amber";
-  if (outcome === "missing") return "border-ink";
-  return "border-line";
+function FamilyHome({ data, error, onJoin, onSignOut }: { data: BoardData; error: string; onJoin: () => void; onSignOut: () => void }) {
+  return (
+    <div className="family-screen">
+      <main id="content" className="mx-auto flex max-w-[1200px] flex-col gap-6 px-5 py-6 pb-28">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lavender">
+              <Users size={28} color="#4D50A2" aria-hidden />
+            </span>
+            <div>
+              <p className="type-small text-muted">{data.productName}</p>
+              <h1 className="type-heading">{data.patient.preferredName}</h1>
+              <p className="type-family text-muted">{data.activeRoom ? "Live" : "Following along"}</p>
+            </div>
+          </div>
+          <button type="button" className="btn-quiet" onClick={onSignOut}>Sign out</button>
+        </header>
+        {error ? <p className="type-family text-off-plan" role="alert">{error}</p> : null}
+        <section className="card">
+          <h2 className="type-heading">Alerts</h2>
+          {data.alerts.length === 0 ? <p className="type-family mt-2">No alerts right now.</p> : data.alerts.map((item) => (
+            <article key={item.id} className="mt-3 rounded-3xl bg-off-plan-bg p-4">
+              <p className="type-label text-off-plan">{item.status === "urgent" ? "Urgent" : "Alert"}</p>
+              <p className="type-family mt-1">{spoken(item.detail)}</p>
+            </article>
+          ))}
+        </section>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <section className="card lg:col-span-1">
+            <h2 className="type-heading">Today&apos;s doses</h2>
+            <p className="type-small mt-2 text-muted">{data.checkIn.completed} of {data.checkIn.scheduled} reported. {data.checkIn.explanation}</p>
+            <ul className="mt-4 flex flex-col gap-3">
+              {data.doses.map((dose) => (
+                <li key={dose.id} className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="type-label">{dose.medicationName}</p>
+                    <p className="type-small text-muted">{new Date(dose.scheduledFor).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
+                  </div>
+                  <span className="rounded-full bg-lavender px-3 py-1 type-small text-indigo">{dose.state.replaceAll("_", " ")}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section className="card">
+            <h2 className="flex items-center gap-2 type-heading"><Heartbeat size={24} aria-hidden /> Symptoms</h2>
+            {data.symptoms.length === 0 ? <p className="type-family mt-2">No symptoms reported.</p> : data.symptoms.map((item) => (
+              <article key={item.id} className="mt-3">
+                <p className="type-family">{item.text}</p>
+                <p className="type-small text-muted">{new Date(item.createdAt).toLocaleString()} · patient report{item.urgent ? " · Urgent" : ""}</p>
+              </article>
+            ))}
+          </section>
+          <section className="card">
+            <h2 className="type-heading">Medicine checks</h2>
+            {data.checks.length === 0 ? <p className="type-family mt-2">No checks yet.</p> : data.checks.slice(0, 6).map((check) => (
+              <article key={check.id} className="mt-3">
+                <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 type-small ${chipStyle[check.outcome] ?? "bg-unsure-bg text-unsure"}`}>
+                  <OutcomeMark outcome={check.outcome} />
+                  {outcomeText(check.outcome)}
+                </span>
+                <p className="type-family mt-2">{spoken(check.spokenScript)}</p>
+                <p className="type-small text-muted">{new Date(check.createdAt).toLocaleString()} · {sourceLabel(check.source)}</p>
+              </article>
+            ))}
+          </section>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="card">
+            <h2 className="flex items-center gap-2 type-heading"><Basket size={24} aria-hidden /> To obtain</h2>
+            {data.tasks.length === 0 ? <p className="type-family mt-2">No open tasks.</p> : data.tasks.map((task) => (
+              <p key={task.id} className="type-family mt-3">{task.title} <span className="type-small text-muted">{task.kind.replaceAll("_", " ")} · {new Date(task.createdAt).toLocaleString()}</span></p>
+            ))}
+          </section>
+          <section className="card">
+            <h2 className="flex items-center gap-2 type-heading"><House size={24} aria-hidden /> Pharmacy</h2>
+            {data.pharmacy.length === 0 ? <p className="type-family mt-2">No pharmacy update yet.</p> : data.pharmacy.map((item) => (
+              <article key={item.id} className="mt-3">
+                <p className="type-label">{item.decision.replaceAll("_", " ")}{item.priceText ? ` · ${item.priceText}` : ""}</p>
+                <p className="type-family mt-1">{item.statement}</p>
+                <p className="type-small text-muted">{new Date(item.createdAt).toLocaleString()} · pharmacist statement</p>
+              </article>
+            ))}
+          </section>
+        </div>
+        <section className="card">
+          <h2 className="flex items-center gap-2 type-heading"><Bell size={24} aria-hidden /> Activity</h2>
+          <ul className="mt-3 flex flex-col gap-3">
+            {data.activity.slice(0, 12).map((item) => (
+              <li key={item.id} className="flex gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lavender text-indigo">
+                  <Package size={20} aria-hidden />
+                </span>
+                <div>
+                  <p className="type-family">{item.title.replace(/^Demo simulation:\s*/i, "")}</p>
+                  <p className="type-small text-muted">{new Date(item.createdAt).toLocaleString()} · {sourceLabel(item.source)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+      {data.activeRoom ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 px-5 pb-[max(12px,env(safe-area-inset-bottom))]">
+          <button type="button" className="btn-main mx-auto max-w-[480px] shadow-high" onClick={onJoin}>Join call</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function sourceLabel(source: string) {
+  if (source === "demo_simulation") return "Telenomily";
+  return source.replaceAll("_", " ");
+}
+
+function spoken(text: string) {
+  return text
+    .replace(/^Demo simulation\.\s*/gim, "")
+    .replaceAll("The phone did not ring. This is not a live Grok video call.", "")
+    .trim();
 }
 
 function OutcomeMark({ outcome }: { outcome: string }) {
-  const common = { size: 28, "aria-hidden": true as const };
+  const common = { size: 18, "aria-hidden": true as const };
   if (outcome === "on_plan") return <CheckCircle {...common} />;
   if (outcome === "not_on_plan") return <Prohibit {...common} />;
-  if (outcome === "expired") return <ClockCountdown {...common} />;
-  if (outcome === "missing") return <MagnifyingGlass {...common} />;
+  if (outcome === "expired") return <CalendarX {...common} />;
+  if (outcome === "missing") return <Package {...common} />;
   if (outcome === "possible_match") return <Pill {...common} />;
   if (outcome === "candidate") return <Translate {...common} />;
   return <Question {...common} />;
-}
-
-function Section({ title, empty, children }: { title: string; empty: string; children: ReactNode[] }) {
-  return (
-    <section>
-      <h2 className="title-1">{title}</h2>
-      {children.length === 0 ? <p className="body-6 mt-3">{empty}</p> : <div className="mt-3 flex flex-col gap-3">{children}</div>}
-    </section>
-  );
 }

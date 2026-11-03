@@ -2,12 +2,14 @@
 
 import { Room, RoomEvent, Track, type TranscriptionSegment } from "livekit-client";
 import { useEffect, useRef, useState } from "react";
+import { activeFacing, attachCamera, cameraErrorMessage, flipPhoneCamera, prepareVideo, pushCameraFrame, requestPhoneCamera, stopCamera, type CameraFacing } from "./open-camera";
 
 type Phase = "idle" | "connecting" | "live" | "reconnecting" | "ended" | "blocked";
 
 export function MedicineCall() {
   const roomRef = useRef<Room | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const facingRef = useRef<CameraFacing>("environment");
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState("");
   const [captionOn, setCaptionOn] = useState(true);
@@ -23,12 +25,54 @@ export function MedicineCall() {
     };
   }, []);
 
-  async function start() {
-    setError("");
+  useEffect(() => {
+    if (phase !== "live" && phase !== "connecting") return;
+    const timer = window.setInterval(() => {
+      const video = videoRef.current;
+      if (video) pushCameraFrame(video);
+    }, 400);
+    return () => window.clearInterval(timer);
+  }, [phase]);
+
+  function showCamera(facing: CameraFacing) {
+    const video = videoRef.current;
+    if (video) {
+      prepareVideo(video);
+      void video.play().catch(() => undefined);
+    }
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setPhase("blocked");
+      setError(cameraErrorMessage(new DOMException("Camera needs a secure page.", "SecurityError")));
+      return;
+    }
+    setError("Asking for your camera...");
     setPhase("connecting");
+    const pending = requestPhoneCamera(facing);
+    void pending.then((stream) => {
+      facingRef.current = facing;
+      const video = videoRef.current;
+      if (video) attachCamera(video, stream);
+      setError("");
+      void continueAfterCamera();
+    }).catch((cause: unknown) => {
+      setPhase("blocked");
+      setError(cameraErrorMessage(cause));
+    });
+  }
+
+  async function start() {
+    showCamera(facingRef.current);
+  }
+
+  async function continueAfterCamera() {
     const response = await fetch("/api/care", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "start-room" }) });
     const payload = (await response.json()) as { error?: string; token?: string; url?: string; roomName?: string };
     if (!response.ok || !payload.token || !payload.url) {
+      if (payload.error?.toLowerCase().includes("rehearsal")) {
+        setPhase("live");
+        setCaption("Show me a medicine and ask me anything.");
+        return;
+      }
       setPhase("blocked");
       setError(payload.error ?? "The medicine check could not start.");
       return;
@@ -94,6 +138,19 @@ export function MedicineCall() {
   }
 
   async function switchCamera() {
+    if (!roomRef.current) {
+      const video = videoRef.current;
+      if (video) prepareVideo(video);
+      try {
+        const stream = await flipPhoneCamera();
+        facingRef.current = activeFacing();
+        if (video) attachCamera(video, stream);
+        setError("");
+      } catch (cause) {
+        setError(cameraErrorMessage(cause));
+      }
+      return;
+    }
     const room = roomRef.current;
     if (!room) return;
     const devices = await Room.getLocalDevices("videoinput");
@@ -104,31 +161,44 @@ export function MedicineCall() {
 
   async function endCall() {
     await fetch("/api/care", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "end-room" }) });
+    stopCamera();
+    if (videoRef.current) videoRef.current.srcObject = null;
     await roomRef.current?.disconnect();
     setPhase("ended");
   }
 
+  const status = phase === "connecting" ? "Connecting..." : phase === "reconnecting" ? "Reconnecting..." : progress ? "Reading the label..." : phase === "live" ? (speakers === "Listening" || speakers === "Waiting" ? "I'm listening" : "Speaking") : phase === "ended" ? "Call ended" : "Ready when you are";
+
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-      <a href="/patient" className="caption-2">Back to today</a>
-      <h1 className="heading-4">Medicine check</h1>
-      <p className="body-6">You can talk. You do not need to type. Show one package when asked.</p>
-      {phase === "idle" || phase === "blocked" || phase === "ended" ? (
-        <button type="button" className="button-xl min-h-16 rounded-2xl bg-forest px-6 py-4 text-paper" onClick={() => void start()}>Start medicine check</button>
-      ) : null}
-      <p className="title-3" aria-live="polite">{phase === "live" ? speakers : phase === "connecting" ? "Connecting" : phase === "reconnecting" ? "Reconnecting" : phase === "ended" ? "Call ended" : "Ready"}</p>
-      {error ? <p className="body-6 text-clay" role="alert">{error}</p> : null}
-      {progress ? <p className="body-6">{progress}</p> : null}
-      <video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full rounded-2xl bg-ink object-cover" />
-      {captionOn ? <p className="body-3 min-h-12 rounded-2xl border border-line bg-card p-4">{caption || "Captions appear here when someone speaks."}</p> : null}
-      {result ? <p className="body-6">{result}</p> : null}
-      <div className="grid grid-cols-2 gap-3">
-        <button type="button" className="button-lg min-h-12 rounded-2xl border border-ink" onClick={() => void roomRef.current?.localParticipant.setMicrophoneEnabled(muted).then(() => setMuted((value) => !value))}>{muted ? "Unmute" : "Mute"}</button>
-        <button type="button" className="button-lg min-h-12 rounded-2xl border border-ink" onClick={() => void switchCamera()}>Switch camera</button>
-        <button type="button" className="button-lg min-h-12 rounded-2xl border border-ink" onClick={() => setCaptionOn((value) => !value)}>{captionOn ? "Hide captions" : "Show captions"}</button>
-        <button type="button" className="button-lg min-h-12 rounded-2xl bg-clay text-paper" onClick={() => void endCall()}>End call</button>
+    <div className="relative min-h-dvh bg-night text-white">
+      <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 z-0 h-full w-full bg-black object-cover" />
+      <div className="relative z-10 flex min-h-dvh flex-col">
+        <header className="flex items-center justify-between px-5 pt-[max(16px,env(safe-area-inset-top))]">
+          <p className="rounded-full bg-night/80 px-4 py-2 type-label" aria-live="polite">{status}</p>
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-lavender text-indigo type-small">AI</span>
+        </header>
+        <div className="mx-auto mt-16 grid h-56 w-56 grid-cols-2 gap-24" aria-hidden>
+          <span className="rounded-tl-3xl border-l-4 border-t-4 border-yellow" />
+          <span className="rounded-tr-3xl border-r-4 border-t-4 border-yellow" />
+          <span className="rounded-bl-3xl border-b-4 border-l-4 border-yellow" />
+          <span className="rounded-br-3xl border-b-4 border-r-4 border-yellow" />
+        </div>
+        <p className="mt-4 text-center type-label">Hold the box here</p>
+        <div className="mt-auto camera-fade px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-16">
+          {error ? <p className="type-body text-yellow" role="alert">{error}</p> : null}
+          {captionOn ? <p className="type-caption max-h-32 overflow-hidden text-white">{caption || result || "Show me a medicine and ask me anything."}</p> : null}
+          {phase === "idle" || phase === "blocked" || phase === "ended" ? (
+            <button type="button" className="btn-main mt-4" onClick={() => void start()}>Allow camera</button>
+          ) : (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <button type="button" className="btn-secondary" aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => void roomRef.current?.localParticipant.setMicrophoneEnabled(muted).then(() => setMuted((value) => !value))}>{muted ? "Unmute" : "Mute"}</button>
+              <button type="button" className="btn-secondary" onClick={() => void switchCamera()}>Flip</button>
+              <button type="button" className="btn-danger" onClick={() => void endCall()}>End call</button>
+            </div>
+          )}
+          {phase !== "live" && phase !== "connecting" ? <StillCheck /> : null}
+        </div>
       </div>
-      <StillCheck />
     </div>
   );
 }
@@ -139,7 +209,7 @@ function StillCheck() {
   const [missing, setMissing] = useState<{ id: string; name: string }[]>([]);
   return (
     <form
-      className="mt-6 flex flex-col gap-3 rounded-2xl border border-line bg-card p-4"
+      className="mt-4 flex flex-col gap-3 rounded-3xl bg-white p-4 text-navy"
       onSubmit={async (event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
@@ -151,21 +221,21 @@ function StillCheck() {
         setMessage(payload.spokenScript ?? payload.error ?? "The check failed.");
       }}
     >
-      <h2 className="title-2">Check a still photo</h2>
-      <p className="caption-2">This uses the same saved result as the call. It does not start a phone call. Speech happens when the live room is open.</p>
-      <label className="title-3">What are you showing?
-        <select className="mt-2 block min-h-12 w-full rounded-xl border border-line px-3" value={kind} onChange={(event) => setKind(event.target.value)}>
+      <h2 className="type-heading">Check a still photo</h2>
+      <p className="type-family text-muted">Same saved result as the call. This does not start a phone call.</p>
+      <label className="type-label">What are you showing?
+        <select className="mt-2 block min-h-14 w-full rounded-full border border-lavender px-4 text-navy" value={kind} onChange={(event) => setKind(event.target.value)}>
           <option value="package">Package</option>
           <option value="pill">Loose pill</option>
           <option value="foreign">Foreign language box</option>
         </select>
       </label>
-      <input name="file" type="file" accept="image/*" capture="environment" required className="body-6" />
-      <button className="button-lg min-h-12 rounded-2xl bg-ink px-4 py-3 text-paper">Check this photo</button>
-      {message ? <p className="body-6">{message}</p> : null}
+      <input name="file" type="file" accept="image/*" capture="environment" required className="type-family" />
+      <button className="btn-secondary">Check this photo</button>
+      {message ? <p className="type-body">{message}</p> : null}
       <button
         type="button"
-        className="button-lg min-h-12 rounded-2xl border border-ink px-4 py-3"
+        className="btn-quiet"
         onClick={async () => {
           const response = await fetch("/api/care", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "finish-cabinet" }) });
           const payload = (await response.json()) as { spokenScript?: string; error?: string; missing?: { id: string; name: string }[] };
@@ -179,7 +249,7 @@ function StillCheck() {
         <button
           key={item.id}
           type="button"
-          className="button-md min-h-12 rounded-2xl border border-ink px-3 py-2 text-left"
+          className="btn-quiet text-left"
           onClick={async () => {
             const response = await fetch("/api/care", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "confirm-obtain", medicationId: item.id }) });
             const payload = (await response.json()) as { spokenScript?: string; error?: string };
@@ -211,12 +281,14 @@ export function FamilyCall({ initial }: { initial: { token: string; url: string 
     };
   }, [initial]);
   return (
-    <main id="content" className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-      <a href="/family" className="caption-2">Back to the dashboard</a>
-      <h1 className="heading-5">Family call</h1>
-      {error ? <p className="body-6 text-clay" role="alert">{error}</p> : null}
-      <video ref={videoRef} autoPlay playsInline className="aspect-video w-full rounded-2xl bg-ink" />
-      <p className="body-6 min-h-12 rounded-2xl border border-line bg-card p-4">{caption || "Captions appear when the room sends them."}</p>
+    <main id="content" className="relative min-h-dvh bg-night text-white">
+      <video ref={videoRef} autoPlay playsInline className="absolute inset-0 h-full w-full object-cover" />
+      <div className="relative z-10 flex min-h-dvh flex-col justify-end camera-fade p-5">
+        <a href="/family" className="type-label text-white">Back</a>
+        <h1 className="type-heading mt-2">Family call</h1>
+        {error ? <p className="type-body text-yellow" role="alert">{error}</p> : null}
+        <p className="type-caption mt-4">{caption || "Captions appear when someone speaks."}</p>
+      </div>
     </main>
   );
 }

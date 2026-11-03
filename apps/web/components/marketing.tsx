@@ -37,7 +37,7 @@ export function TaglineReveal({ lines }: { lines: string[] }) {
       {lines.map((line) => {
         const parts = line.split(" ");
         const row = (
-          <p key={line} className="heading-3">
+          <p key={line} className="type-heading text-navy">
             {parts.map((word) => {
               const index = cursor;
               cursor += 1;
@@ -64,19 +64,21 @@ export function SiteNav({ name }: { name: string }) {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-4 z-20 mx-auto flex w-fit justify-center px-4">
-      <nav className="flex items-center gap-4 rounded-full border border-line bg-card/80 px-4 py-2 shadow-sm backdrop-blur">
-        <a href="#content" className="title-3">{name}</a>
-        <a href="/login" className="button-md rounded-full bg-ink px-3 py-2 text-paper transition duration-300 ease-soft hover:scale-[1.02] active:scale-[0.98]">Sign in</a>
-        <button type="button" className="button-md md:hidden" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <nav className="flex items-center gap-4 rounded-full bg-white px-4 py-2 shadow-low">
+        <a href="#content" className="type-label text-navy">{name}</a>
+        <a href="/login" className="rounded-full bg-yellow px-4 py-2 type-label text-navy">Sign in</a>
+        <a href="/demo" className="type-label text-indigo">Demo</a>
+        <button type="button" className="type-label md:hidden" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
           {open ? "Close" : "Menu"}
         </button>
       </nav>
       {open ? (
-        <div className="fixed inset-0 z-30 flex flex-col gap-6 bg-paper/95 p-8 backdrop-blur md:hidden">
-          <button type="button" className="button-md self-end" onClick={() => setOpen(false)}>Close</button>
-          <a className="heading-5" href="/login">Sign in</a>
-          <a className="heading-5" href="/privacy">Privacy</a>
-          <a className="heading-5" href="/terms">Terms</a>
+        <div className="fixed inset-0 z-30 flex flex-col gap-6 bg-mist p-8 md:hidden">
+          <button type="button" className="type-label self-end" onClick={() => setOpen(false)}>Close</button>
+          <a className="type-heading" href="/login">Sign in</a>
+          <a className="type-heading" href="/demo">Demo</a>
+          <a className="type-heading" href="/privacy">Privacy</a>
+          <a className="type-heading" href="/terms">Terms</a>
         </div>
       ) : null}
     </header>

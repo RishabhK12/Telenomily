@@ -23,39 +23,37 @@ export function AuthForm({ mode }: { mode: "live" | "rehearsal" | "unconfigured"
   }
 
   if (mode === "unconfigured") {
-    return <p className="body-3">This server has no Supabase keys and rehearsal mode is off. Set APP_MODE=rehearsal or add the live keys. Nothing is being simulated.</p>;
+    return <p className="type-body">This server has no Supabase keys and rehearsal mode is off. Set APP_MODE=rehearsal or add the live keys. Nothing is being simulated.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {mode === "rehearsal" ? (
-        <div className="rounded-2xl border border-amber bg-card p-4">
-          <p className="title-3">Rehearsal mode</p>
-          <p className="body-6 mt-2">These buttons open the fictional household only. They do not place phone calls or start a live video room.</p>
-          <div className="mt-4 flex flex-col gap-3">
-            <button type="button" disabled={pending} className="button-xl min-h-16 rounded-2xl bg-forest px-6 py-4 text-paper disabled:opacity-60" onClick={() => send({ action: "rehearsal", role: "patient" })}>Continue as Elena</button>
-            <button type="button" disabled={pending} className="button-lg min-h-12 rounded-2xl border border-ink px-6 py-3" onClick={() => send({ action: "rehearsal", role: "family" })}>Continue as Mateo</button>
-          </div>
-        </div>
+        <>
+          <p className="type-heading">Rehearsal</p>
+          <p className="type-family text-muted">These buttons open the fictional household only. They do not place phone calls or start a live video room.</p>
+          <button type="button" disabled={pending} className="btn-main" onClick={() => send({ action: "rehearsal", role: "patient" })}>Continue as Elena</button>
+          <button type="button" disabled={pending} className="btn-secondary" onClick={() => send({ action: "rehearsal", role: "family" })}>Continue as Mateo</button>
+        </>
       ) : (
         <form
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
             const data = new FormData(event.currentTarget);
             void send({ action: "sign-in", email: data.get("email"), password: data.get("password") });
           }}
         >
-          <label className="title-4 flex flex-col gap-2">Email
-            <input name="email" type="email" required className="min-h-12 rounded-xl border border-line px-3" />
+          <label className="type-label flex flex-col gap-2">Email
+            <input name="email" type="email" required autoComplete="username" className="min-h-14 rounded-full border border-lavender px-4" />
           </label>
-          <label className="title-4 flex flex-col gap-2">Password
-            <input name="password" type="password" required minLength={8} className="min-h-12 rounded-xl border border-line px-3" />
+          <label className="type-label flex flex-col gap-2">Password
+            <input name="password" type="password" required minLength={8} autoComplete="current-password" className="min-h-14 rounded-full border border-lavender px-4" />
           </label>
-          <button className="button-lg min-h-12 rounded-2xl bg-ink px-4 py-3 text-paper" disabled={pending}>Sign in</button>
+          <button className="btn-main" disabled={pending}>Sign in</button>
         </form>
       )}
-      {error ? <p className="body-6 text-clay" role="alert">{error}</p> : null}
+      {error ? <p className="type-body text-off-plan" role="alert">{error}</p> : null}
     </div>
   );
 }

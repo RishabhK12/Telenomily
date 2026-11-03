@@ -80,7 +80,18 @@ export type RoomRow = { id: string; patientId: string; livekitRoom: string; purp
 export type InviteRow = { id: string; patientId: string; tokenHash: string; purpose: "family_link" | "demo_family_session"; expiresAt: string; usedAt: string | null; usedBy: string | null };
 export type LinkRow = { patientId: string; familyProfileId: string; status: string };
 
+export type DemoCall = {
+  phase: "ringing" | "connected";
+  startedAt: string;
+  ringUntil: string;
+  answeredAt: string | null;
+  caption: string;
+  status: string;
+  image: string | null;
+};
+
 type State = {
+  demoCall: DemoCall | null;
   patients: PatientRow[];
   links: LinkRow[];
   plans: PlanRow[];
@@ -110,6 +121,7 @@ export function freshDemoState(): State {
   const medications: MedRow[] = demoMedications.map((medication) => ({ ...medication, planVersionId: planId, patientId: DEMO.patientId }));
   const schedule = buildSchedule(demoMedications, { startDate: today(DEMO.timeZone), days: 2, timeZone: DEMO.timeZone });
   return {
+    demoCall: null,
     patients: [
       {
         id: DEMO.patientId,
@@ -270,6 +282,21 @@ export const rehearsalDb = {
     }),
   findInvite: (hash: string) => withState((state) => state.invites.find((item) => item.tokenHash === hash) ?? null),
   resetDemo: () => withState((state) => Object.assign(state, freshDemoState())),
+  demoCall: () =>
+    withState((state) => {
+      const call = state.demoCall ?? null;
+      if (!call) return null;
+      if (call.phase === "ringing" && Date.parse(call.ringUntil) <= Date.now()) {
+        call.phase = "connected";
+        call.answeredAt = new Date().toISOString();
+        call.status = call.image ? "Reading the label..." : call.caption ? "Speaking" : "I'm listening";
+        if (!call.caption) call.caption = "Show me a medicine and ask me anything.";
+      }
+      return call;
+    }),
+  setDemoCall: (call: DemoCall | null) => withState((state) => {
+    state.demoCall = call;
+  }),
 };
 
 function db() {
@@ -646,6 +673,10 @@ export const liveDb = {
     await this.confirmPlan(plan.id, fresh.doses);
     for (const item of fresh.activity) await this.insertActivity(item);
   },
+  async demoCall(): Promise<DemoCall | null> {
+    return null;
+  },
+  async setDemoCall(_call: DemoCall | null) {},
 };
 
 function medFromRow(row: Record<string, unknown>): MedRow {

@@ -15,6 +15,22 @@
 
 Synthetic drawings are in `apps/web/public/fixtures`. Notes are in `docs/FIXTURES.md`.
 
+## Laptop hub
+
+The presenter laptop uses `/demo`. Open Elena at `/patient` and Mateo at `/demo/family`. The same browser profile shares one sign-in, and `/demo/family` always shows Elena's record in rehearsal.
+
+The discharge file is `apps/web/public/fixtures/DischargeSample.pdf`. It is a blank form. The medication table is empty, so the demo reads no dose from it. Elena's confirmed plan is the fictional schedule already loaded.
+
+Simulated calls do not ring a phone, and they are not a live video call with Grok.
+
+## Laptop hub
+
+Open `http://localhost:3000/demo` on the laptop and `http://localhost:3000/demo/family` in a second window. The family window always shows Mateo and polls the same rehearsal record. It does not need a second sign-in.
+
+The hospital sheet is `apps/web/public/fixtures/DischargeSample.pdf`. The medication table is blank, so the discharge step does not invent a dose. Elena's schedule stays the fictional confirmed plan.
+
+Each hub button writes a labeled simulation. Reminder and pharmacy steps do not create a call row and do not ring a phone. Medicine pictures are the fixture drawings, not product photos. The family window should show the new row within a few seconds.
+
 ## Live path
 
 Follow `docs/SETUP.md` until the presenter readiness list shows every group as Ready. Leave `APP_MODE` unset.
